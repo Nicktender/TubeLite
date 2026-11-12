@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TubeLite — YouTube Client</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0d12;--panel:#141923;--panel2:#1b2330;--line:#293345;--text:#eef3fa;--muted:#9ba9bb;--accent:#ff4545;--accent-soft:#52252a;--shadow:#0005}
+:root[data-theme="light"]{color-scheme:light;--bg:#f3f5f8;--panel:#fff;--panel2:#edf0f5;--line:#d8dee8;--text:#17202c;--muted:#647184;--accent:#d92e36;--accent-soft:#ffe5e7;--shadow:#26354a18}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;transition:background .15s,color .15s}
+button,input,select{font:inherit}
+button{cursor:pointer;border:0;border-radius:10px;padding:9px 13px;background:var(--accent);color:white;font-weight:700}
+button:hover{filter:brightness(1.08)}
+button.secondary,select{background:var(--panel2);border:1px solid var(--line);color:var(--text)}
+button.small{padding:6px 9px;font-size:12px}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select{min-width:0;border-radius:10px;padding:10px 12px;outline:none}
+input{background:var(--bg);border:1px solid var(--line);color:var(--text)}
+input:focus,select:focus{border-color:#7d91ad}
+header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:12px 19px;display:flex;align-items:center;gap:16px}
+.brand{font-weight:850;letter-spacing:-.7px;font-size:20px;white-space:nowrap}.brand span{color:var(--accent)}
+.search{display:flex;gap:8px;max-width:760px;width:100%;margin:auto}.search input{flex:1}
+.header-actions{display:flex;gap:8px}
+main{max-width:1500px;margin:auto;padding:21px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px}
+.player-panel{min-width:0}
+.player-wrap{width:100%;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+iframe#player{width:100%;height:100%;border:0}
+#empty{height:100%;display:grid;place-items:center;text-align:center;color:#aab4c2;padding:25px}
+#empty strong{display:block;color:#fff;font-size:19px;margin-bottom:7px}
+.video-title{font-size:21px;font-weight:750;margin:14px 0 5px;overflow-wrap:anywhere}
+.video-meta{color:var(--muted);font-size:14px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0 21px}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 13px;flex-wrap:wrap}
+.section-head h2{font-size:17px;margin:0}
+.filters{display:flex;gap:7px;flex-wrap:wrap}
+.filters button{padding:7px 11px;font-size:13px}
+.filters button.active{background:var(--accent-soft);color:var(--text);border:1px solid var(--accent)}
+.search-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px}
+.search-tools input{flex:1;min-width:170px}
+#results{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.video-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;transition:transform .15s,border-color .15s;min-width:0}
+.video-card:hover{transform:translateY(-2px);border-color:#71829a}
+.thumb{aspect-ratio:16/9;background:#080a0e;position:relative;cursor:pointer}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.duration{position:absolute;right:7px;bottom:7px;background:#000d;color:white;padding:2px 6px;border-radius:5px;font-size:12px}
+.card-info{padding:10px 11px 11px}
+.card-title{font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+.card-author{color:var(--muted);font-size:13px;margin-top:6px}
+.card-actions{display:flex;gap:6px;margin-top:9px}.card-actions button{flex:1}
+aside{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px;height:max-content;min-width:0}
+aside h2{font-size:16px;margin:0 0 11px}
+.url-row{display:flex;gap:7px}.url-row input{width:100%}
+.note{font-size:12px;color:var(--muted);margin-top:8px}
+.status{font-size:13px;color:var(--muted);min-height:20px;margin:9px 0}
+.side-divider{border:0;border-top:1px solid var(--line);margin:17px 0}
+.queue-list,.recent{display:grid;gap:7px}
+.queue-item{display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px;background:var(--panel2);padding:7px;border-radius:9px}
+.queue-play{background:transparent;color:var(--text);padding:4px;text-align:left;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.queue-controls{display:flex;gap:4px}
+.empty-results{grid-column:1/-1;text-align:center;color:var(--muted);padding:32px 12px;background:var(--panel);border-radius:12px}
+.pagination{display:flex;justify-content:center;align-items:center;gap:10px;margin:17px 0}
+.page-label{font-size:13px;color:var(--muted)}
+.chat-wrap{display:none;margin:14px 0 20px}
+.chat-wrap.show{display:block}
+.chat-frame{width:100%;height:420px;border:1px solid var(--line);border-radius:12px;background:#111}
+.chat-note{font-size:12px;color:var(--muted);margin-top:6px}
+footer{max-width:1500px;margin:0 auto;padding:0 21px 25px;color:var(--muted);font-size:12px}
+.modal-backdrop{position:fixed;inset:0;z-index:30;background:#0009;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-backdrop.open{display:flex}
+.modal{width:min(460px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:19px;box-shadow:0 20px 70px var(--shadow)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.modal-head h2{margin:0;font-size:19px}
+.setting{padding:12px 0;border-top:1px solid var(--line)}.setting label{font-weight:700;display:block;margin-bottom:6px}.setting p{font-size:12px;color:var(--muted);margin:4px 0 8px}
+.setting select{width:100%}.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:15px}.toggle-row input{width:19px;height:19px;accent-color:var(--accent)}
+.disclaimer{background:var(--panel2);border-radius:10px;padding:11px;font-size:12px;color:var(--muted)}
+@media(max-width:950px){main{grid-template-columns:1fr}aside{order:2}.chat-frame{height:360px}}
+@media(max-width:600px){header{flex-wrap:wrap;padding:11px}.brand{width:100%}.search{order:2;max-width:none}.header-actions{position:absolute;right:11px;top:10px}main{padding:12px;gap:14px}.video-title{font-size:18px}#results{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.card-info{padding:8px}.card-title{font-size:13px}.card-author{font-size:11px}.card-actions button{font-size:11px;padding:6px 4px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">▶ Tube<span>Lite</span></div>
+  <form class="search" id="searchForm">
+    <input id="searchInput" type="search" placeholder="Search videos..." autocomplete="off" aria-label="Search videos">
+    <button type="submit">Search</button>
+  </form>
+  <div class="header-actions"><button class="secondary" id="settingsButton" title="Settings">⚙ Settings</button></div>
+</header>
+
+<main>
+<section class="player-panel">
+  <div class="player-wrap" id="playerWrap"><div id="empty"><div><strong>Your video goes here</strong>Search for a video, choose a result, or paste a YouTube link.</div></div></div>
+  <div class="video-title" id="nowTitle">Nothing playing</div>
+  <div class="video-meta" id="nowMeta">Videos play in YouTube's embedded player.</div>
+  <div class="toolbar">
+    <button class="secondary" id="openYoutube" disabled>Open on YouTube ↗</button>
+    <button class="secondary" id="copyLink" disabled>Copy video link</button>
+    <button class="secondary" id="toggleChat" disabled>Show live chat</button>
+  </div>
+  <div class="chat-wrap" id="chatWrap">
+    <div class="section-head"><h2>Live chat</h2><span class="note">Read-only embedded chat</span></div>
+    <iframe class="chat-frame" id="chatFrame" title="YouTube live chat" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <div class="chat-note" id="chatNote">Live chat is only available for eligible live streams. YouTube may block chat embedding on some browsers or local-file setups.</div>
+  </div>
+  <div class="section-head">
+    <h2 id="resultsHeading">Find something to watch</h2>
+    <div class="filters">
+      <button class="secondary active" data-filter="all">Videos</button>
+      <button class="secondary" data-filter="shorts">Shorts</button>
+    </div>
+  </div>
+  <div class="search-tools">
+    <input id="channelFilter" type="search" placeholder="Filter by channel name…" aria-label="Filter by channel name">
+    <select id="sortSelect" aria-label="Sort search results">
+      <option value="relevance">Search relevance</option>
+      <option value="date">Upload date</option>
+      <option value="views">View count</option>
+      <option value="rating">Rating</option>
+    </select>
+  </div>
+  <div id="results"><div class="empty-results">Search for a topic, creator, or video title to get started.</div></div>
+  <div class="pagination">
+    <button class="secondary" id="prevPage" disabled>← Previous</button>
+    <span class="page-label" id="pageLabel">Page 1</span>
+    <button class="secondary" id="nextPage" disabled>Next →</button>
+  </div>
+</section>
+
+<aside>
+  <h2>Play a YouTube link</h2>
+  <form id="urlForm"><div class="url-row"><input id="urlInput" type="url" placeholder="Paste a video or Shorts URL" aria-label="YouTube URL"><button type="submit">Play</button></div></form>
+  <div class="note">Accepts youtube.com, youtu.be, and Shorts links. No YouTube sign-in needed.</div>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+  <hr class="side-divider">
+  <div class="section-head"><h2>Up next</h2><button class="secondary small" id="clearQueue">Clear</button></div>
+  <div class="queue-list" id="queue"><div class="note">Your queue is empty. Add videos from search results.</div></div>
+  <hr class="side-divider">
+  <h2>Recently watched</h2>
+  <div class="recent" id="recent"><div class="note">Your recent videos appear here during this session.</div></div>
+  <hr class="side-divider">
+  <h2>About TubeLite</h2>
+  <div class="note">An independent, accountless interface. It uses YouTube's embedded player and public video search services; it does not load the YouTube website.</div>
+</aside>
+</main>
+<footer>
+Search is provided by public Invidious instances and may occasionally be unavailable or rate-limited. Playback and live chat are provided by YouTube. Some videos cannot be embedded. Queue and recent history are kept only for this browser session.
+</footer>
+
+<div class="modal-backdrop" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="modal">
+    <div class="modal-head"><h2 id="settingsTitle">Settings</h2><button class="secondary small" id="closeSettings">✕</button></div>
+    <div class="setting">
+      <label for="themeSelect">Appearance</label>
+      <p>Choose how TubeLite looks.</p>
+      <select id="themeSelect"><option value="system">System default</option><option value="dark">Dark</option><option value="light">Light</option></select>
+    </div>
+    <div class="setting">
+      <div class="toggle-row"><div><label for="recommendationsToggle">Enable recommendations</label><p>Show a discovery feed when you have not searched for anything.</p></div><input type="checkbox" id="recommendationsToggle"></div>
+    </div>
+    <div class="setting">
+      <label>Transparency</label>
+      <div class="disclaimer">TubeLite's code and interface were generated with assistance from ChatGPT. TubeLite is an independent project and is not affiliated with, endorsed by, or operated by YouTube or Google.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const instances = ["https://inv.nadeko.net","https://invidious.nerdvpn.de","https://inv.tux.pizza","https://invidious.privacyredirect.com"];
+  const $ = id => document.getElementById(id);
+  let currentFilter="all", lastResults=[], recent=[], queue=[], currentVideo=null;
+  let currentQuery="", currentPage=1, hasNextPage=false, recommendationMode=false;
+  let activeInstance=instances[0], searchRequest=0;
+  const themeSelect=$("themeSelect"), recommendationsToggle=$("recommendationsToggle");
+
+  function setStatus(message){$("status").textContent=message}
+  function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+  function applyTheme(theme){
+    const resolved=theme==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):theme;
+    document.documentElement.dataset.theme=resolved;
+    themeSelect.value=theme;
+    try{localStorage.setItem("tubelite-theme",theme)}catch(_){}
+  }
+  let savedTheme="system";try{savedTheme=localStorage.getItem("tubelite-theme")||"system"}catch(_){}
+  applyTheme(savedTheme);
+  try{recommendationMode=localStorage.getItem("tubelite-recommendations")==="true"}catch(_){}
+  recommendationsToggle.checked=recommendationMode;
+  matchMedia("(prefers-color-scheme: light)").addEventListener?.("change",()=>{if(themeSelect.value==="system")applyTheme("system")});
+
+  function videoIdFromUrl(raw){
+    try{
+      const u=new URL(raw),host=u.hostname.replace(/^www\./,"").toLowerCase();
+      if(host==="youtu.be")return u.pathname.split("/").filter(Boolean)[0]||null;
+      if(host.endsWith("youtube.com")||host==="youtube-nocookie.com"){
+        if(u.pathname==="/watch")return u.searchParams.get("v");
+        const p=u.pathname.split("/").filter(Boolean);
+        if(["shorts","embed","live","v"].includes(p[0]))return p[1]||null;
+      }
+    }catch(_){}
+    return null;
+  }
+  function titleOf(v){return v.title||"Untitled video"}
+  function authorOf(v){return v.author||v.authorName||""}
+  function addRecent(v){recent=[v,...recent.filter(x=>x.id!==v.id)].slice(0,7);renderRecent()}
+  function playVideo(id,title="YouTube video",author="",advanceQueue=false){
+    if(!/^[a-zA-Z0-9_-]{11}$/.test(id)){setStatus("That doesn't look like a valid YouTube video ID.");return}
+    currentVideo={id,title,author};
+    $("playerWrap").innerHTML=`<iframe id="player" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0&enablejsapi=1" title="${escapeHtml(title)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+    $("nowTitle").textContent=title;
+    $("nowMeta").textContent=(author?`By ${author} · `:"")+"Embedded YouTube player";
+    $("openYoutube").disabled=false;$("copyLink").disabled=false;$("toggleChat").disabled=false;
+    $("chatWrap").classList.remove("show");$("toggleChat").textContent="Show live chat";$("chatFrame").src="about:blank";
+    addRecent({id,title,author});
+    setStatus("");
+    if(advanceQueue)renderQueue();
+  }
+  function renderRecent(){
+    const host=$("recent");host.innerHTML="";
+    if(!recent.length){host.innerHTML='<div class="note">Your recent videos appear here during this session.</div>';return}
+    recent.forEach(v=>{const b=document.createElement("button");b.className="secondary small";b.textContent=v.title;b.title=v.title;b.addEventListener("click",()=>playVideo(v.id,v.title,v.author));host.appendChild(b)});
+  }
+  function renderQueue(){
+    const host=$("queue");host.innerHTML="";
+    if(!queue.length){host.innerHTML='<div class="note">Your queue is empty. Add videos from search results.</div>';return}
+    queue.forEach((v,index)=>{
+      const row=document.createElement("div");row.className="queue-item";
+      const play=document.createElement("button");play.className="queue-play";play.textContent=`${index+1}. ${v.title}`;play.title=v.title;play.addEventListener("click",()=>playQueued(index));
+      const controls=document.createElement("div");controls.className="queue-controls";
+      const remove=document.createElement("button");remove.className="secondary small";remove.textContent="×";remove.title="Remove from queue";remove.addEventListener("click",()=>{queue.splice(index,1);renderQueue()});
+      controls.append(remove);row.append(play,controls);host.appendChild(row);
+    });
+  }
+  function playQueued(index){
+    if(index<0||index>=queue.length)return;
+    const [v]=queue.splice(index,1);renderQueue();playVideo(v.id,v.title,v.author,true);
+  }
+  function queueVideo(v){
+    if(queue.some(x=>x.id===v.id)){setStatus("That video is already in your queue.");return}
+    queue.push(v);renderQueue();setStatus("Added to queue.");
+  }
+  function duration(seconds){
+    const n=Number(seconds);if(!Number.isFinite(n)||n<=0)return "";
+    const s=Math.floor(n),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),r=s%60;
+    return h?`${h}:${String(m).padStart(2,"0")}:${String(r).padStart(2,"0")}`:`${m}:${String(r).padStart(2,"0")}`;
+  }
+  function isShort(v){return Number(v.lengthSeconds)>0&&Number(v.lengthSeconds)<=180}
+  function filteredResults(){
+    const channel=$("channelFilter").value.trim().toLowerCase();
+    return lastResults.filter(v=>(currentFilter==="all"||isShort(v))&&(!channel||authorOf(v).toLowerCase().includes(channel)));
+  }
+  function renderResults(){
+    const list=filteredResults();
+    $("resultsHeading").textContent=currentQuery?(currentFilter==="shorts"?"Shorts results":"Search results"):(recommendationMode?"Recommended videos":"Find something to watch");
+    $("results").innerHTML="";
+    if(!list.length){$("results").innerHTML=`<div class="empty-results">${lastResults.length?"No results match these filters.":"No videos to show. Try searching for something."}</div>`;return}
+    list.forEach(v=>{
+      const id=v.videoId,title=titleOf(v),author=authorOf(v);
+      const thumbs=Array.isArray(v.videoThumbnails)?v.videoThumbnails:[];
+      const thumb=thumbs.find(t=>t.quality==="medium")?.url||thumbs.at(-1)?.url||`https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
+      const card=document.createElement("article");card.className="video-card";
+      card.innerHTML=`<div class="thumb" role="button" tabindex="0" aria-label="Play ${escapeHtml(title)}"><img loading="lazy" src="${escapeHtml(thumb)}" alt=""><span class="duration">${isShort(v)?"SHORT":escapeHtml(duration(v.lengthSeconds))}</span></div><div class="card-info"><div class="card-title">${escapeHtml(title)}</div><div class="card-author">${escapeHtml(author)}</div><div class="card-actions"><button class="secondary small play-card">Play</button><button class="secondary small queue-card">＋ Queue</button></div></div>`;
+      const play=()=>playVideo(id,title,author);
+      card.querySelector(".thumb").addEventListener("click",play);card.querySelector(".thumb").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")play()});
+      card.querySelector(".card-title").addEventListener("click",play);card.querySelector(".play-card").addEventListener("click",play);
+      card.querySelector(".queue-card").addEventListener("click",()=>queueVideo({id,title,author}));
+      $("results").appendChild(card);
+    });
+  }
+  async function fetchSearch(query,page,sort,kind="video"){
+    const request=++searchRequest;let lastError;
+    for(const base of instances){
+      try{
+        const url=`${base}/api/v1/search?q=${encodeURIComponent(query)}&type=${kind}&page=${page}&sort_by=${encodeURIComponent(sort)}`;
+        const response=await fetch(url,{headers:{Accept:"application/json"}});
+        if(!response.ok)throw new Error(`HTTP ${response.status}`);
+        const data=await response.json();if(!Array.isArray(data))throw new Error("Unexpected search response");
+        if(request!==searchRequest)return null;
+        activeInstance=base;
+        return data.filter(v=>v.type==="video"&&v.videoId);
+      }catch(e){lastError=e}
+    }
+    if(request===searchRequest)console.warn("TubeLite search error:",lastError);
+    return null;
+  }
+  async function searchVideos(query,page=1){
+    if(!query.trim())return;
+    currentQuery=query;currentPage=page;setStatus(`Searching page ${page}…`);
+    $("results").innerHTML='<div class="empty-results">Searching…</div>';
+    $("prevPage").disabled=page<=1;$("nextPage").disabled=true;$("pageLabel").textContent=`Page ${page}`;
+    const data=await fetchSearch(query,page,$("sortSelect").value);
+    if(data===null){lastResults=[];hasNextPage=false;renderResults();setStatus("Search services are unavailable. You can still paste a YouTube link.");return}
+    lastResults=data;hasNextPage=data.length>0;renderResults();
+    $("prevPage").disabled=page<=1;$("nextPage").disabled=!hasNextPage;
+    setStatus(`Showing ${data.length} results · Page ${page}`);
+  }
+  async function loadRecommendations(){
+    if(!recommendationMode||currentQuery)return;
+    currentQuery="";currentPage=1;setStatus("Loading recommendations…");
+    $("results").innerHTML='<div class="empty-results">Loading discovery feed…</div>';
+    const data=await fetchSearch("popular videos",1,"views");
+    if(data===null){lastResults=[];renderResults();setStatus("Could not load recommendations. Search still works.");return}
+    lastResults=data;hasNextPage=false;renderResults();setStatus("Popular videos from a public video index.");
+    $("prevPage").disabled=true;$("nextPage").disabled=true;$("pageLabel").textContent="Discovery";
+  }
+
+  $("searchForm").addEventListener("submit",e=>{e.preventDefault();currentFilter="all";document.querySelectorAll("[data-filter]").forEach(b=>b.classList.toggle("active",b.dataset.filter==="all"));searchVideos($("searchInput").value,1)});
+  $("urlForm").addEventListener("submit",e=>{e.preventDefault();const id=videoIdFromUrl($("urlInput").value.trim());if(!id){setStatus("Please paste a valid YouTube video, Shorts, or youtu.be link.");return}playVideo(id,"YouTube video")});
+  document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{currentFilter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x===b));renderResults()}));
+  $("channelFilter").addEventListener("input",renderResults);
+  $("sortSelect").addEventListener("change",()=>{if(currentQuery)searchVideos(currentQuery,1)});
+  $("prevPage").addEventListener("click",()=>{if(currentQuery&&currentPage>1)searchVideos(currentQuery,currentPage-1)});
+  $("nextPage").addEventListener("click",()=>{if(currentQuery&&hasNextPage)searchVideos(currentQuery,currentPage+1)});
+  $("clearQueue").addEventListener("click",()=>{queue=[];renderQueue()});
+  $("openYoutube").addEventListener("click",()=>{if(currentVideo)window.open(`https://www.youtube.com/watch?v=${encodeURIComponent(currentVideo.id)}`,"_blank","noopener,noreferrer")});
+  $("copyLink").addEventListener("click",async()=>{if(!currentVideo)return;try{await navigator.clipboard.writeText(`https://www.youtube.com/watch?v=${currentVideo.id}`);setStatus("Video link copied.")}catch(_){setStatus("Clipboard access was blocked by the browser.")}});
+  $("toggleChat").addEventListener("click",()=>{
+    if(!currentVideo)return;
+    const wrap=$("chatWrap"),show=!wrap.classList.contains("show");
+    if(show){
+      const domain=location.hostname||"localhost";
+      $("chatFrame").src=`https://www.youtube.com/live_chat?v=${encodeURIComponent(currentVideo.id)}&embed_domain=${encodeURIComponent(domain)}`;
+      $("chatNote").textContent="If this video is live and chat is enabled, the chat should appear here. For a local HTML file, some browsers or YouTube may refuse the embedded chat.";
+    }
+    wrap.classList.toggle("show",show);$("toggleChat").textContent=show?"Hide live chat":"Show live chat";
+  });
+  $("settingsButton").addEventListener("click",()=>$("settingsModal").classList.add("open"));
+  $("closeSettings").addEventListener("click",()=>$("settingsModal").classList.remove("open"));
+  $("settingsModal").addEventListener("click",e=>{if(e.target===$("settingsModal"))$("settingsModal").classList.remove("open")});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")$("settingsModal").classList.remove("open")});
+  themeSelect.addEventListener("change",()=>applyTheme(themeSelect.value));
+  recommendationsToggle.addEventListener("change",()=>{
+    recommendationMode=recommendationsToggle.checked;
+    try{localStorage.setItem("tubelite-recommendations",String(recommendationMode))}catch(_){}
+    if(recommendationMode&&!currentQuery)loadRecommendations();
+    else if(!recommendationMode&&!currentQuery){lastResults=[];renderResults();setStatus("")}
+  });
+  renderQueue();renderRecent();
+  if(recommendationMode)loadRecommendations();
+})();
+</script>
+</body>
+</html>
